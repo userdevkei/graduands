@@ -28,6 +28,44 @@ class GraduandController extends Controller
         ]);
     }
 
+    /** Server-side DataTables endpoint. */
+    public function data(Request $request)
+    {
+        $base = Graduand::query()->filter($request->only(['cohort_id', 'status']));
+        $total = (clone $base)->count();
+
+        $search = trim((string) $request->input('search.value', ''));
+        $query = (clone $base)->with('cohort')->filter(['search' => $search]);
+        $filtered = (clone $query)->count();
+
+        // column index => sortable DB column (null = not sortable)
+        $sortable = [0 => 'last_name', 1 => 'programme', 2 => null, 3 => 'status', 4 => 'submitted_at', 5 => null];
+        $column = $sortable[(int) $request->input('order.0.column', 0)] ?? 'last_name';
+        $dir = $request->input('order.0.dir') === 'desc' ? 'desc' : 'asc';
+
+        $rows = $query
+            ->orderBy($column ?? 'last_name', $column ? $dir : 'asc')
+            ->orderBy('first_name')
+            ->skip(max((int) $request->input('start', 0), 0))
+            ->take(min(max((int) $request->input('length', 25), 1), 100))
+            ->get();
+
+        return response()->json([
+            'draw' => (int) $request->input('draw'),
+            'recordsTotal' => $total,
+            'recordsFiltered' => $filtered,
+            'data' => $rows->map(fn (Graduand $g) => [
+                'full_name' => $g->full_name,
+                'registration_number' => $g->registration_number,
+                'programme' => $g->programme,
+                'cohort' => $g->cohort?->name,
+                'status' => $g->status,
+                'submitted_at' => $g->submitted_at?->format('d M Y, H:i'),
+                'url' => route('admin.graduands.show', $g),
+            ])->all(),
+        ]);
+    }
+
     public function show(Graduand $graduand)
     {
         return view('admin.graduands.show', [

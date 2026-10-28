@@ -24,6 +24,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     Route::resource('cohorts', Admin\CohortController::class)->except('show');
 
+    Route::get('graduands/data', [Admin\GraduandController::class, 'data'])->name('graduands.data');
     Route::get('graduands/export', [Admin\GraduandController::class, 'export'])->name('graduands.export');
     Route::get('graduands', [Admin\GraduandController::class, 'index'])->name('graduands.index');
     Route::get('graduands/{graduand}', [Admin\GraduandController::class, 'show'])->name('graduands.show');
@@ -38,5 +39,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('imports/{batch}/commit', [Admin\ImportController::class, 'commit'])->name('imports.commit');
     Route::delete('imports/{batch}', [Admin\ImportController::class, 'destroy'])->name('imports.destroy');
 
+    Route::get('logs/data', [Admin\LogController::class, 'data'])->name('logs.data');
     Route::get('logs', [Admin\LogController::class, 'index'])->name('logs.index');
 });

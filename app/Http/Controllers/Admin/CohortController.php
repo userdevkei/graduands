@@ -12,7 +12,10 @@ class CohortController extends Controller
     public function index()
     {
         return view('admin.cohorts.index', [
-            'cohorts' => Cohort::withCount('graduands')->orderByDesc('graduation_year')->get(),
+            'cohorts' => Cohort::withCount([
+                'graduands',
+                'graduands as completed_count' => fn ($q) => $q->where('status', '!=', 'pending'),
+            ])->orderByDesc('graduation_year')->get(),
         ]);
     }
 

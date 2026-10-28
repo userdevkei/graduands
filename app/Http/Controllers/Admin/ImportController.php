@@ -35,16 +35,11 @@ class ImportController extends Controller
         return redirect()->route('admin.imports.preview', $batch);
     }
 
-    public function preview(Request $request, ImportBatch $batch)
+    public function preview(ImportBatch $batch)
     {
-        $status = $request->query('status');
-
         return view('admin.imports.preview', [
             'batch' => $batch->load('cohort'),
-            'rows' => $batch->rows()
-                ->when($status, fn ($q) => $q->where('status', $status))
-                ->orderBy('row_number')->paginate(50)->withQueryString(),
-            'status' => $status,
+            'rows' => $batch->rows()->orderBy('row_number')->get(),
         ]);
     }
 

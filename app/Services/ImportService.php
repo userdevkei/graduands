@@ -98,11 +98,11 @@ class ImportService
 
             foreach (array_chunk($rows, 500) as $chunk) {
                 DB::table('import_rows')->insert(array_map(fn ($r) => $r + [
-                        'id' => $common->IDGenerator(),
-                        'import_batch_id' => $batch->id,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ], $chunk));
+                    'id' => $common->IDGenerator(),
+                    'import_batch_id' => $batch->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], $chunk));
             }
 
             ActivityLogService::log('import.staged', $batch, null, [
@@ -145,13 +145,13 @@ class ImportService
                         continue;
                     }
                     $insert[] = $d + [
-                            'id' => $common->IDGenerator(),
-                            'cohort_id' => $batch->cohort_id,
-                            'portal_first_name' => $d['first_name'],
-                            'status' => Graduand::STATUS_PENDING,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ];
+                        'id' => $common->IDGenerator(),
+                        'cohort_id' => $batch->cohort_id,
+                        'portal_first_name' => $d['first_name'],
+                        'status' => Graduand::STATUS_PENDING,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
                 }
 
                 if ($insert) {

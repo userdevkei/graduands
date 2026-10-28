@@ -37,4 +37,26 @@ class DashboardService
             'graduands as completed_count' => fn ($q) => $q->where('status', '!=', Graduand::STATUS_PENDING),
         ])->orderByDesc('graduation_year')->get();
     }
+
+    /** Submissions per day for the last $days days (zero-filled). */
+    public function trend(int $days = 14, ?string $cohortId = null): array
+    {
+        $from = now()->subDays($days - 1)->startOfDay();
+
+        $counts = Graduand::query()
+            ->when($cohortId, fn ($q) => $q->where('cohort_id', $cohortId))
+            ->whereNotNull('submitted_at')
+            ->where('submitted_at', '>=', $from)
+            ->select(DB::raw('DATE(submitted_at) as d'), DB::raw('COUNT(*) as c'))
+            ->groupBy('d')
+            ->pluck('c', 'd');
+
+        $out = [];
+        for ($i = 0; $i < $days; $i++) {
+            $day = $from->copy()->addDays($i);
+            $out[] = ['label' => $day->format('j M'), 'count' => (int) ($counts[$day->format('Y-m-d')] ?? 0)];
+        }
+
+        return $out;
+    }
 }

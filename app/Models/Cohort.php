@@ -35,4 +35,23 @@ class Cohort extends Model
             && (! $this->opens_at || $this->opens_at->isPast())
             && (! $this->closes_at || $this->closes_at->isFuture());
     }
+
+    /** Label + tone describing the confirmation window, for chips in the UI. */
+    public function windowState(): array
+    {
+        if (! $this->is_active) {
+            return ['Inactive', 'muted'];
+        }
+        if ($this->opens_at && $this->opens_at->isFuture()) {
+            return ['Opens '.$this->opens_at->diffForHumans(), 'info'];
+        }
+        if ($this->closes_at && $this->closes_at->isPast()) {
+            return ['Closed', 'muted'];
+        }
+        if ($this->closes_at) {
+            return ['Closes '.$this->closes_at->diffForHumans(), now()->diffInDays($this->closes_at, false) < 7 ? 'warn' : 'ok'];
+        }
+
+        return ['Open', 'ok'];
+    }
 }

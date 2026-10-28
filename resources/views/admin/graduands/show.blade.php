@@ -1,79 +1,104 @@
 @extends('layouts.admin')
 @section('title', $graduand->full_name)
 
-@section('content')
 @php
-    $badge = ['pending' => 'warning', 'confirmed' => 'success', 'updated' => 'primary'][$graduand->status];
     $original = $graduand->original_data;
+    $inits = mb_strtoupper(mb_substr($graduand->first_name, 0, 1).mb_substr($graduand->last_name, 0, 1));
 @endphp
 
-<div class="d-flex justify-content-between align-items-start mb-3">
-    <div>
-        <h1 class="h4 mb-1">{{ $graduand->full_name }}</h1>
-        <span class="text-muted">{{ $graduand->registration_number }}</span>
-        <span class="badge text-bg-{{ $badge }} ms-2">{{ ucfirst($graduand->status) }}</span>
+@section('header')
+<div class="page-head">
+    <div class="d-flex align-items-center gap-3">
+        <span class="ini ini-lg">{{ $inits }}</span>
+        <div>
+            <h1 class="page-title">{{ $graduand->full_name }}</h1>
+            <p class="page-sub d-flex flex-wrap align-items-center gap-2">
+                <span>{{ $graduand->registration_number }}</span>
+                <span class="muted">in {{ $graduand->cohort->name }}</span>
+                @include('partials.status-chip', ['status' => $graduand->status])
+            </p>
+        </div>
     </div>
-    <a href="{{ route('admin.graduands.edit', $graduand) }}" class="btn btn-outline-dark">Edit record</a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('admin.graduands.index', ['cohort_id' => $graduand->cohort_id]) }}" class="btn btn-ghost">Back to list</a>
+        <a href="{{ route('admin.graduands.edit', $graduand) }}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit record</a>
+    </div>
 </div>
+@endsection
 
-<div class="row g-3">
-    <div class="col-lg-7">
-        <div class="card mb-3"><div class="card-header">Details {{ $original ? '(original vs current)' : '' }}</div>
-        <div class="table-responsive"><table class="table mb-0">
-            @foreach (\App\Models\Graduand::EDITABLE_LABELS as $field => $label)
-                @php
-                    $current = $field === 'date_of_birth' ? $graduand->date_of_birth?->format('Y-m-d') : $graduand->{$field};
-                    $before = $original[$field] ?? null;
-                    $changed = $original && $before !== $current;
-                @endphp
-                <tr class="{{ $changed ? 'table-warning' : '' }}">
-                    <th style="width: 30%">{{ $label }}</th>
-                    <td>
-                        @if ($changed)
-                            <del class="text-muted">{{ $before ?? '-' }}</del> &rarr; <strong>{{ $current ?? '-' }}</strong>
-                        @else
-                            {{ $current ?? '-' }}
-                        @endif
-                    </td>
-                </tr>
+@section('content')
+<div class="row g-4">
+    <div class="col-xl-7">
+        <div class="row g-3 mb-4">
+            @foreach (['Programme' => $graduand->programme, 'Award' => $graduand->award, 'Classification' => $graduand->classification] as $k => $v)
+                <div class="col-md-4"><div class="panel panel-body py-3"><div class="sub">{{ $k }}</div><div class="fw-semibold">{{ $v ?: '-' }}</div></div></div>
             @endforeach
-            <tr><th>Programme</th><td>{{ $graduand->programme }}</td></tr>
-            <tr><th>Award</th><td>{{ $graduand->award ?? '-' }}</td></tr>
-            <tr><th>Classification</th><td>{{ $graduand->classification ?? '-' }}</td></tr>
-            <tr><th>Cohort</th><td>{{ $graduand->cohort->name }}</td></tr>
-            <tr><th>Portal first name</th><td>{{ $graduand->portal_first_name }}</td></tr>
-            <tr><th>Submitted</th><td>{{ $graduand->submitted_at?->format('d M Y H:i') ?? '-' }} {{ $graduand->submitted_ip ? '('.$graduand->submitted_ip.')' : '' }}</td></tr>
-        </table></div></div>
+        </div>
 
-        @if ($graduand->isLocked() && auth()->user()->isSuperAdmin())
-            <div class="card border-danger"><div class="card-body">
-                <h2 class="h6">Unlock record</h2>
-                <p class="small text-muted">Gives the student one more update. The reason is written to the audit log.</p>
-                <form method="POST" action="{{ route('admin.graduands.unlock', $graduand) }}" class="d-flex gap-2">
-                    @csrf
-                    <input name="reason" class="form-control @error('reason') is-invalid @enderror" placeholder="Reason" required>
-                    <button class="btn btn-danger">Unlock</button>
-                </form>
-                @error('reason')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
-            </div></div>
-        @endif
+        <div class="panel mb-4">
+            <div class="panel-head">
+                <h2 class="panel-title">Details</h2>
+                @if ($original)<span class="small-muted">Highlighted rows were changed by the student</span>@endif
+            </div>
+            <div class="kv">
+                @foreach (\App\Models\Graduand::EDITABLE_LABELS as $field => $label)
+                    @php
+                        $current = $field === 'date_of_birth' ? $graduand->date_of_birth?->format('Y-m-d') : $graduand->{$field};
+                        $before = $original[$field] ?? null;
+                        $changed = $original && $before !== $current;
+                    @endphp
+                    <div class="k {{ $changed ? 'changed' : '' }}">{{ $label }}</div>
+                    <div class="{{ $changed ? 'changed' : '' }}">
+                        @if ($changed)
+                            <span class="diff-old">{{ $before ?: 'empty' }}</span><strong>{{ $current ?: 'empty' }}</strong>
+                        @else
+                            {{ $current ?: '-' }}
+                        @endif
+                    </div>
+                @endforeach
+                <div class="k">Name on portal</div><div>{{ $graduand->portal_first_name }}</div>
+                <div class="k">Submitted</div>
+                <div>{{ $graduand->submitted_at ? $graduand->submitted_at->format('j M Y, H:i') : 'Not yet' }} @if($graduand->submitted_ip)<span class="sub">from {{ $graduand->submitted_ip }}</span>@endif</div>
+            </div>
+        </div>
     </div>
 
-    <div class="col-lg-5">
-        <div class="card"><div class="card-header">History</div>
-        <ul class="list-group list-group-flush">
-            @forelse ($history as $log)
-                <li class="list-group-item small">
-                    <div class="d-flex justify-content-between">
-                        <strong>{{ $log->action }}</strong>
-                        <span class="text-muted">{{ $log->created_at->format('d M Y H:i') }}</span>
-                    </div>
-                    <div class="text-muted">{{ $log->user?->name ?? 'student/system' }} &middot; {{ $log->ip_address }}</div>
-                </li>
-            @empty
-                <li class="list-group-item text-muted">No activity yet.</li>
-            @endforelse
-        </ul></div>
+    <div class="col-xl-5">
+        @if ($graduand->isLocked() && auth()->user()->isSuperAdmin())
+            <div class="panel mb-4">
+                <div class="panel-head"><h2 class="panel-title">Unlock record</h2></div>
+                <div class="panel-body">
+                    <p class="muted">This gives the student one more update. The reason is saved in the audit log.</p>
+                    <form method="POST" action="{{ route('admin.graduands.unlock', $graduand) }}">
+                        @csrf
+                        <input name="reason" class="form-control mb-2 @error('reason') is-invalid @enderror" placeholder="Why is this being unlocked?" required>
+                        @error('reason')<div class="invalid-feedback d-block mb-2">{{ $message }}</div>@enderror
+                        <button class="btn btn-danger-soft"><i class="bi bi-unlock me-1"></i>Unlock record</button>
+                    </form>
+                </div>
+            </div>
+        @endif
+
+        <div class="panel">
+            <div class="panel-head"><h2 class="panel-title">History</h2></div>
+            <ul class="timeline">
+                @forelse ($history as $log)
+                    @php $m = \App\Support\ActionLabel::for($log->action); @endphp
+                    <li>
+                        <span class="tl-dot tone-{{ $m['tone'] }}"><i class="bi {{ $m['icon'] }}"></i></span>
+                        <div>
+                            <div class="fw-semibold">{{ $m['label'] }}</div>
+                            <div class="sub">{{ $log->user?->name ?? 'Student / system' }}, {{ $log->created_at->format('j M Y, H:i') }}</div>
+                            @if ($log->action === 'admin.unlocked_record' && ($log->new_values['reason'] ?? null))
+                                <div class="sub">Reason: {{ $log->new_values['reason'] }}</div>
+                            @endif
+                        </div>
+                    </li>
+                @empty
+                    <li class="empty w-100">No activity on this record yet.</li>
+                @endforelse
+            </ul>
+        </div>
     </div>
 </div>
 @endsection
